@@ -1,0 +1,162 @@
+diff -ru netmaster/include/config.h nethack-3.6.0/include/config.h
+--- netmaster/include/config.h	2015-11-17 00:58:34.000000000 -0500
++++ nethack-3.6.0/include/config.h	2017-12-12 18:53:03.403772522 -0500
+@@ -43,9 +43,9 @@
+ #if !defined(NOTTYGRAPHICS)
+ #define TTY_GRAPHICS /* good old tty based graphics */
+ #endif
+-/* #define X11_GRAPHICS */   /* X11 interface */
+-/* #define QT_GRAPHICS */    /* Qt interface */
+-/* #define GNOME_GRAPHICS */ /* Gnome interface */
++#define X11_GRAPHICS   /* X11 interface */
++//#define QT_GRAPHICS */    /* Qt interface */
++//#define GNOME_GRAPHICS */ /* Gnome interface */
+ /* #define MSWIN_GRAPHICS */ /* Windows NT, CE, Graphics */
+ 
+ /*
+@@ -125,7 +125,7 @@
+  * would allow:
+  *  xpmtoppm <x11tiles.xpm | pnmscale 1.25 | ppmquant 90 >x11tiles_big.xpm
+  */
+-/* # define USE_XPM */ /* Disable if you do not have the XPM library */
++#define USE_XPM /* Disable if you do not have the XPM library */
+ #ifdef USE_XPM
+ #define GRAPHIC_TOMBSTONE /* Use graphical tombstone (rip.xpm) */
+ #endif
+@@ -250,11 +250,11 @@
+ 
+ #if defined(UNIX) && !defined(ZLIB_COMP) && !defined(COMPRESS)
+ /* path and file name extension for compression program */
+-#define COMPRESS "/usr/bin/compress" /* Lempel-Ziv compression */
+-#define COMPRESS_EXTENSION ".Z"      /* compress's extension */
++//#define COMPRESS "/usr/bin/compress" /* Lempel-Ziv compression */
++//#define COMPRESS_EXTENSION ".Z"      /* compress's extension */
+ /* An example of one alternative you might want to use: */
+-/* #define COMPRESS "/usr/local/bin/gzip" */ /* FSF gzip compression */
+-/* #define COMPRESS_EXTENSION ".gz" */       /* normal gzip extension */
++#define COMPRESS "/usr/bin/gzip" // */ /* FSF gzip compression */
++#define COMPRESS_EXTENSION ".gz" // */       /* normal gzip extension */
+ #endif
+ 
+ #ifndef COMPRESS
+diff -ru netmaster/include/unixconf.h nethack-3.6.0/include/unixconf.h
+--- netmaster/include/unixconf.h	2015-11-17 05:54:25.000000000 -0500
++++ nethack-3.6.0/include/unixconf.h	2017-12-12 08:01:47.488422252 -0500
+@@ -36,7 +36,7 @@
+ #define NETWORK        /* if running on a networked system */
+                        /* e.g. Suns sharing a playground through NFS */
+ /* #define SUNOS4 */   /* SunOS 4.x */
+-/* #define LINUX */    /* Another Unix clone */
++#define LINUX    /* Another Unix clone */
+ /* #define CYGWIN32 */ /* Unix on Win32 -- use with case sensitive defines */
+ /* #define GENIX */    /* Yet Another Unix Clone */
+ /* #define HISX */     /* Bull Unix for XPS Machines */
+@@ -128,7 +128,7 @@
+  * "extra output" method is used, but not all systems provide access to
+  * a fine-grained timer.
+  */
+-/* #define TIMED_DELAY */ /* usleep() */
++#define TIMED_DELAY // usleep()
+ #endif
+ 
+ /*
+diff -ru netmaster/sys/unix/Makefile.src nethack-3.6.0/sys/unix/Makefile.src
+--- netmaster/sys/unix/Makefile.src	2015-11-12 02:51:56.000000000 -0500
++++ nethack-3.6.0/sys/unix/Makefile.src	2017-12-12 08:20:09.662704239 -0500
+@@ -222,8 +222,8 @@
+ 
+ #
+ #
+-#WINSRC = $(WINTTYSRC)
+-#WINOBJ = $(WINTTYOBJ)
++WINSRC = $(WINTTYSRC) $(WINX11SRC)
++WINOBJ = $(WINTTYOBJ) $(WINX11OBJ)
+ 
+ # on some systems the termcap library is in -ltermcap or -lcurses
+ # on 386 Xenix, the -ltermlib tputs() seems not to work; use -lcurses instead
+@@ -238,14 +238,14 @@
+ # WINTTYLIB = -ltermcap
+ # WINTTYLIB = -lcurses
+ # WINTTYLIB = -lcurses16
+-# WINTTYLIB = -lncurses
++WINTTYLIB = -lncurses
+ #WINTTYLIB = -ltermlib
+ #
+ # libraries for X11
+ # If USE_XPM is defined in config.h, you will also need -lXpm here.
+-WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11
++# WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11
+ # WINX11LIB = -lXaw -lXmu -lXt -lX11
+-# WINX11LIB = -lXaw -lXmu -lXext -lXt -lXpm -lX11 -lm
++WINX11LIB = -lXaw -lXmu -lXext -lXt -lXpm -lX11 -lm
+ # WINX11LIB = -lXaw -lXmu -lXpm -lXext -lXt -lX11 -lSM -lICE -lm # BSD/OS 2.0
+ #
+ # libraries for Qt
+@@ -263,7 +263,7 @@
+ # libraries for BeOS 
+ WINBELIB = -lbe
+ 
+-#WINLIB = $(WINTTYLIB)
++WINLIB = $(WINTTYLIB) $(WINX11LIB)
+ 
+ # any other strange libraries your system needs (for Sysunix only -- the more
+ # specialized targets should already be right)
+diff -ru netmaster/sys/unix/Makefile.top nethack-3.6.0/sys/unix/Makefile.top
+--- netmaster/sys/unix/Makefile.top	2015-11-18 15:54:59.000000000 -0500
++++ nethack-3.6.0/sys/unix/Makefile.top	2017-12-12 07:43:17.617184244 -0500
+@@ -20,8 +20,8 @@
+ #PREFIX	 = /usr
+ GAME     = nethack
+ # GAME     = nethack.prg
+-#GAMEUID  = games
+-#GAMEGRP  = bin
++# GAMEUID  = games
++# GAMEGRP  = bin
+ 
+ # Permissions - some places use setgid instead of setuid, for instance
+ # See also the option "SECURE" in include/config.h
+@@ -53,7 +53,7 @@
+ # for BeOS
+ # VARDATND = beostiles
+ # for Gnome
+-# VARDATND = x11tiles pet_mark.xbm pilemark.xpm rip.xpm mapbg.xpm
++VARDATND = x11tiles pet_mark.xbm pilemark.xpm rip.xpm mapbg.xpm
+ 
+ VARDATD = bogusmon data engrave epitaph oracles options quest.dat rumors
+ VARDAT = $(VARDATD) $(VARDATND)
+@@ -69,8 +69,8 @@
+ # other permission-related reasons.  If that happens, you may want to set the
+ # command to "true", which is a no-op. Note that disabling chown or chgrp
+ # will only work if setuid (or setgid) behavior is not desired or required.
+-#CHOWN = chown
+-#CHGRP = chgrp
++CHOWN = chown
++CHGRP = chgrp
+ 
+ #
+ # end of configuration
+diff -ru netmaster/win/share/tilemap.c nethack-3.6.0/win/share/tilemap.c
+--- netmaster/win/share/tilemap.c	2015-11-12 01:15:03.000000000 -0500
++++ nethack-3.6.0/win/share/tilemap.c	2017-12-12 08:13:15.546142697 -0500
+@@ -463,8 +463,10 @@
+         fprintf(ofp, "%s\n", epilog[i]);
+     }
+ 
++#ifdef STATUES_LOOK_LIKE_MONSTERS
++    start = laststatuetile + 1;
++#endif
+     fprintf(ofp, "\nint total_tiles_used = %d;\n", start);
+-    lastothtile = start - 1;
+ }
+ 
+ int
+@@ -500,6 +502,9 @@
+     fprintf(ofp, "#define MAXOBJTILE %d\n", lastobjtile);
+     fprintf(ofp, "#define MAXOTHTILE %d\n", lastothtile);
+ 
++#ifdef STATUES_LOOK_LIKE_MONSTERS
++    fprintf(ofp, "/* #define MAXSTATUETILE %d */\n", laststatuetile);
++#endif
+     fprintf(ofp, "\n/*tile.c*/\n");
+ 
+     fclose(ofp);

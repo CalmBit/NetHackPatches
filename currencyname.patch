@@ -1,0 +1,146 @@
+--- include/decl.h	2017-12-12 19:42:52.025862258 -0500
++++ include/decl.h	2017-12-12 22:41:25.444468683 -0500
+@@ -190,6 +190,7 @@
+ E NEARDATA char plname[PL_NSIZ];
+ E NEARDATA char dogname[];
+ E NEARDATA char catname[];
++E NEARDATA char currencyname[];
+ E NEARDATA char horsename[];
+ E char preferred_pet;
+ E const char *occtxt; /* defined when occupation != NULL */
+--- src/decl.c	2017-12-12 19:42:52.029195636 -0500
++++ src/decl.c	2017-12-12 22:40:57.284193411 -0500
+@@ -202,6 +202,7 @@
+ /* originally from dog.c */
+ NEARDATA char dogname[PL_PSIZ] = DUMMY;
+ NEARDATA char catname[PL_PSIZ] = DUMMY;
++NEARDATA char currencyname[PL_PSIZ] = DUMMY;
+ NEARDATA char horsename[PL_PSIZ] = DUMMY;
+ char preferred_pet; /* '\0', 'c', 'd', 'n' (none) */
+ /* monsters that went down/up together with @ */
+--- src/invent.c	2017-12-12 19:42:52.029195636 -0500
++++ src/invent.c	2017-12-12 22:42:30.925125000 -0500
+@@ -803,7 +803,7 @@
+ {
+     const char *res;
+ 
+-    res = Hallucination ? currencies[rn2(SIZE(currencies))] : "zorkmid";
++    res = Hallucination ? currencies[rn2(SIZE(currencies))] : currencyname;
+     if (amount != 1L)
+         res = makeplural(res);
+     return res;
+--- src/objnam.c	2017-12-12 19:42:52.032529014 -0500
++++ src/objnam.c	2017-12-12 22:41:55.088096425 -0500
+@@ -2804,7 +2804,7 @@
+      * gold/money concept.  Maybe we want to add other monetary units as
+      * well in the future. (TH)
+      */
+-    if (!BSTRCMPI(bp, p - 10, "gold piece") || !BSTRCMPI(bp, p - 7, "zorkmid")
++    if (!BSTRCMPI(bp, p - 10, "gold piece") || !BSTRCMPI(bp, p - 7, currencyname)
+         || !strcmpi(bp, "gold") || !strcmpi(bp, "money")
+         || !strcmpi(bp, "coin") || *bp == GOLD_SYM) {
+         if (cnt > 5000 && !wizard)
+--- src/options.c	2017-12-12 19:42:52.032529014 -0500
++++ src/options.c	2017-12-12 22:56:34.293930802 -0500
+@@ -253,7 +253,9 @@
+       SET_IN_FILE },
+ #endif
+     { "catname", "the name of your (first) cat (e.g., catname:Tabby)",
+-      PL_PSIZ, DISP_IN_GAME },
++	  PL_PSIZ, DISP_IN_GAME },
++	{ "currencyname", "the name of the game's currency", PL_PSIZ,
++	  DISP_IN_GAME },
+     { "disclose", "the kinds of information to disclose at end of game",
+       sizeof(flags.end_disclose) * 2, SET_IN_GAME },
+     { "dogname", "the name of your (first) dog (e.g., dogname:Fang)", PL_PSIZ,
+@@ -1905,7 +1907,21 @@
+             nmcpy(catname, op, PL_PSIZ);
+         sanitize_name(catname);
+         return;
+-    }
++	}
++	
++	fullname = "currencyname";
++    if (match_optname(opts, fullname, 3, TRUE)) {
++        if (duplicate)
++        	complain_about_duplicate(opts, 1);
++        if (negated)
++            bad_negation(fullname, FALSE);
++        else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
++            nmcpy(currencyname, op, PL_PSIZ);
++        sanitize_name(currencyname);
++        return;
++	} 
++	else if(!currencyname[0])
++	    nmcpy(currencyname, "zorkmid", PL_PSIZ);
+ 
+     fullname = "dogname";
+     if (match_optname(opts, fullname, 3, TRUE)) {
+@@ -4492,7 +4508,9 @@
+                     : showsyms[(int) objects[BOULDER].oc_class + SYM_OFF_O]);
+ #endif
+     else if (!strcmp(optname, "catname"))
+-        Sprintf(buf, "%s", catname[0] ? catname : none);
++		Sprintf(buf, "%s", catname[0] ? catname : none);
++	else if (!strcmp(optname, "currencyname"))
++	    Sprintf(buf, "%s", currencyname[0] ? currencyname : none);
+     else if (!strcmp(optname, "disclose"))
+         for (i = 0; i < NUM_DISCLOSURE_OPTIONS; i++) {
+             if (i)
+--- src/read.c	2017-12-12 19:42:52.032529014 -0500
++++ src/read.c	2017-12-12 22:41:58.248128080 -0500
+@@ -259,7 +259,7 @@
+             You("feel the embossed words:");
+         else if (flags.verbose)
+             You("read:");
+-        pline("\"1 Zorkmid. 857 GUE. In Frobs We Trust.\"");
++        pline("\"1 %s. 857 GUE. In Frobs We Trust.\"", currencyname);
+         u.uconduct.literate++;
+         return 1;
+     } else if (scroll->oartifact == ART_ORB_OF_FATE) {
+--- src/shk.c	2017-12-12 19:42:52.032529014 -0500
++++ src/shk.c	2017-12-12 22:42:01.098156673 -0500
+@@ -1557,8 +1557,8 @@
+ 
+     pay(ltmp, shkp);
+     shk_names_obj(shkp, obj,
+-                  consumed ? "paid for %s at a cost of %ld gold piece%s.%s"
+-                           : "bought %s for %ld gold piece%s.%s",
++                  consumed ? "paid for %s at a cost of %ld %s%s.%s"
++                           : "bought %s for %ld %s%s.%s",
+                   ltmp, "");
+     obj->quan = save_quan; /* restore original count */
+     /* quan => amount just bought, save_quan => remaining unpaid count */
+@@ -2337,7 +2337,7 @@
+     if (was_unknown) {
+         Sprintf(fmtbuf, "%%s; you %s", fmt);
+         obj_name[0] = highc(obj_name[0]);
+-        pline(fmtbuf, obj_name, (obj->quan > 1L) ? "them" : "it", amt,
++        pline(fmtbuf, obj_name, (obj->quan > 1L) ? "them" : "it", amt, currencyname,
+               plur(amt), arg);
+     } else {
+         You(fmt, obj_name, amt, plur(amt), arg);
+@@ -2920,8 +2920,8 @@
+             shk_names_obj(
+                 shkp, obj,
+                 (sell_how != SELL_NORMAL)
+-                    ? "traded %s for %ld zorkmid%s in %scredit."
+-                    : "relinquish %s and acquire %ld zorkmid%s in %scredit.",
++                    ? "traded %s for %ld %s%s in %scredit."
++                    : "relinquish %s and acquire %ld %s%s in %scredit.",
+                 tmpcr, (eshkp->credit > 0L) ? "additional " : "");
+             eshkp->credit += tmpcr;
+             subfrombill(obj, shkp);
+@@ -3015,9 +3015,9 @@
+             shk_names_obj(shkp, obj,
+                           (sell_how != SELL_NORMAL)
+                            ? ((!ltmp && cltmp && only_partially_your_contents)
+-                         ? "sold some items inside %s for %ld gold piece%s.%s"
+-                         : "sold %s for %ld gold piece%s.%s")
+-            : "relinquish %s and receive %ld gold piece%s in compensation.%s",
++                         ? "sold some items inside %s for %ld %s%s.%s"
++                         : "sold %s for %ld %s%s.%s")
++            : "relinquish %s and receive %ld %s%s in compensation.%s",
+                           offer, "");
+             break;
+         default:
